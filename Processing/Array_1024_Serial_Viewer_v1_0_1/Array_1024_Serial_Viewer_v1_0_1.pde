@@ -1,4 +1,3 @@
-
 /**************************************************************************
  * Update Note
  *  FootViewer ver1.0.0 (2019.09.09)
@@ -12,10 +11,11 @@
 
 import processing.serial.*;
 import java.util.Date;
+import controlP5.*;
 //import java.awt.Robot;
 
 
-
+ControlP5 cp5;
 PFont font;
 
 String progVer = "Rev 1.0.1";
@@ -47,7 +47,6 @@ void settings() {
   size(50 + 25 * NUM_COLUMN, 100 + 25 * NUM_ROW);
 }
 
-
 // Variables for current date & time.
 int d;    // Values from 1 - 31
 int m;  // Values from 1 - 12
@@ -55,6 +54,12 @@ int y;   // 2003, 2004, 2005, etc.
 int s;  // Values from 0 - 59
 int mn;  // Values from 0 - 59
 int h;    // Values from 0 - 23
+
+//button
+int sBtnX = 340;
+int sBtnY = 25;
+int sBtnWidth = 60;
+int sBtnHeight = 30;
 
 String portName;
 
@@ -77,7 +82,22 @@ void setup() {
   //save current time
   savedTime = millis();
 
+  cp5 = new ControlP5(this);
 
+  // create a new button 
+  Button saveBtn= cp5.addButton("SAVE")
+    .setPosition(sBtnX, sBtnY)
+    .setSize(sBtnWidth, sBtnHeight)
+    ;
+    //saveBtn.setColorBackground(color(#ffffff));
+    //saveBtn.setColorActive(); when mouse-over
+    //saveBtn.getCaptionLabel().setSize(10);
+    
+    
+   Button resetBtn= cp5.addButton("RESET")
+    .setPosition(sBtnX+sBtnWidth+10, sBtnY)
+    .setSize(sBtnWidth, sBtnHeight);
+  
   // Select serial port.
   println(Serial.list());  // Show up all possible serial ports.
   delay(2000);
@@ -101,41 +121,20 @@ void draw() {
   text(progVer, width-80, height-15);
   text("FPS :"+int(frameRate), 20, 60);
   text("Connected port: " + portName, 20, 40);
-  
-  
-  int sBtnX = width/2;
-  int sBtnY = 40;
-  int sBtnWidth = 100;
-  int sBtnHeight = 50;
-  
-  //button
-  fill(#ffcc33);
-  rect(sBtnX, sBtnY, sBtnWidth, sBtnHeight);
-  
-  if(mousePressed && (sBtnX < mouseX && mouseY < sBtnX + sBtnWidth) 
-     && (sBtnX < mouseX && mouseY < sBtnX + sBtnHeight)){
-     getDate();
-     
-    saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
-     delay(1000);
-     
-     table.clearRows();
-     //myPort.clear();
-  }
 
-  
+
   // Set font size and color.
   textFont(font, 20);
   fill(255);
   getDate();
   text(str(y)+"."+str(m)+"."+str(d)+". "+str(h)+":"+str(mn)+":"+str(s), width-200, 40);
-  
+
 
   //Draw rectangular for sensor indication.
   for (int i=0; i<NUM_ROW; i++) {
     for (int j=0; j<NUM_COLUMN; j++) {
-
       //println("data["+j+"]["+i+"]/16"+"="+data[j][i]/16);
+      //fill(data[j][i]/16, 0, 0);
       fill(data[j][i]/16, 0, 0);
       rect(20+i*25, 70+j*25, 20, 20, 7);
     }
@@ -160,7 +159,7 @@ void serialEvent(Serial myPort) {
       for (int i=0; i<NUM_ROW; i++) {    
         for (int j=0; j<NUM_COLUMN; j++) {
           data[i][j] = byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3]); 
-          newRow.setInt("Col"+Integer.toString(j+1), data[i][j]);
+          newRow.setInt("Col"+Integer.toString(i*NUM_COLUMN+j+1), data[i][j]);
         }
       }    
       //renewal
@@ -182,6 +181,18 @@ void serialEvent(Serial myPort) {
   }
 }
 
+public void SAVE() {
+  println("data saved");
+    getDate();
+    saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
+    delay(1000);
+    table.clearRows();
+    //myPort.clear();
+}
+public void RESET() {
+  println("data reset");
+    table.clearRows();
+}
 
 // Set escape event for terminate program.
 void keyPressed() {
@@ -190,7 +201,6 @@ void keyPressed() {
     //output.close(); // Finishes the file
     getDate();
     saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
-
     //myPort.dispose();
     exit(); // Stops the program
   }
