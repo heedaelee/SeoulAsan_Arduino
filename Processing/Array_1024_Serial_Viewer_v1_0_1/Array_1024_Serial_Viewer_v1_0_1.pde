@@ -12,7 +12,7 @@
 
 import processing.serial.*;
 import java.util.Date;
-import java.awt.Robot;
+//import java.awt.Robot;
 
 
 
@@ -43,7 +43,7 @@ int passedTime;
 
 
 void settings() {
-  // Set size of window : size(width, height)
+  // Set size of window : size(width, Height)
   size(50 + 25 * NUM_COLUMN, 100 + 25 * NUM_ROW);
 }
 
@@ -101,12 +101,35 @@ void draw() {
   text(progVer, width-80, height-15);
   text("FPS :"+int(frameRate), 20, 60);
   text("Connected port: " + portName, 20, 40);
+  
+  
+  int sBtnX = width/2;
+  int sBtnY = 40;
+  int sBtnWidth = 100;
+  int sBtnHeight = 50;
+  
+  //button
+  fill(#ffcc33);
+  rect(sBtnX, sBtnY, sBtnWidth, sBtnHeight);
+  
+  if(mousePressed && (sBtnX < mouseX && mouseY < sBtnX + sBtnWidth) 
+     && (sBtnX < mouseX && mouseY < sBtnX + sBtnHeight)){
+     getDate();
+     
+    saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
+     delay(1000);
+     
+     table.clearRows();
+     //myPort.clear();
+  }
 
+  
   // Set font size and color.
   textFont(font, 20);
   fill(255);
   getDate();
   text(str(y)+"."+str(m)+"."+str(d)+". "+str(h)+":"+str(mn)+":"+str(s), width-200, 40);
+  
 
   //Draw rectangular for sensor indication.
   for (int i=0; i<NUM_ROW; i++) {
@@ -168,7 +191,7 @@ void keyPressed() {
     getDate();
     saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
 
-    myPort.dispose();
+    //myPort.dispose();
     exit(); // Stops the program
   }
 }
