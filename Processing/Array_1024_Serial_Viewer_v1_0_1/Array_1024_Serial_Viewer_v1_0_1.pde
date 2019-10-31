@@ -38,7 +38,7 @@ Table table;
 //Set-up interval saving time
 int startedTime;
 int savedTime;
-int totalTime = 100; //1s = 1000
+int totalTime = 500; //1s = 1000
 int passedTime;
 
 
@@ -89,15 +89,15 @@ void setup() {
     .setPosition(sBtnX, sBtnY)
     .setSize(sBtnWidth, sBtnHeight)
     ;
-    //saveBtn.setColorBackground(color(#ffffff));
-    //saveBtn.setColorActive(); when mouse-over
-    //saveBtn.getCaptionLabel().setSize(10);
-    
-    
-   Button resetBtn= cp5.addButton("RESET")
+  //saveBtn.setColorBackground(color(#ffffff));
+  //saveBtn.setColorActive(); when mouse-over
+  //saveBtn.getCaptionLabel().setSize(10);
+
+
+  Button resetBtn= cp5.addButton("RESET")
     .setPosition(sBtnX+sBtnWidth+10, sBtnY)
     .setSize(sBtnWidth, sBtnHeight);
-  
+
   // Select serial port.
   println(Serial.list());  // Show up all possible serial ports.
   delay(2000);
@@ -134,8 +134,10 @@ void draw() {
   for (int i=0; i<NUM_ROW; i++) {
     for (int j=0; j<NUM_COLUMN; j++) {
       //println("data["+j+"]["+i+"]/16"+"="+data[j][i]/16);
-      //fill(data[j][i]/16, 0, 0);
-      fill(data[j][i]/16, 0, 0);
+      
+      //fill(255, 255-data[j][i]/16, 255-data[j][i]/16);
+      
+      fill(data[j][i]/2, 0, 0);
       rect(20+i*25, 70+j*25, 20, 20, 7);
     }
   }
@@ -144,33 +146,31 @@ void draw() {
 void serialEvent(Serial myPort) {
   // Trim single data packet
   if (myPort.available() > ((NUM_SENSOR+1) * 2)) { //available :   Returns the number of bytes available.
-    inBytes = myPort.readBytes(); //Reads a group of bytes from the buffer or null if there are none available.
+    inBytes = myPort.readBytes(); //Reads a group of bytes from the buffer or null if there are none available. received Byte inBytes[2052]
     myPort.clear();
   }
 
   try {
     passedTime = millis() - savedTime;
     if (passedTime > totalTime) {
-      TableRow newRow = table.addRow();
-      println("passedTime :" + passedTime +" totalTime : "+ totalTime);
 
-      //before : String timeStamp = hour()+" : "+minute()+" : "+ second()+" : "+ millis();
+      TableRow newRow = table.addRow();
+      //println("passedTime :" + passedTime +" totalTime : "+ totalTime);
       newRow.setString("TimeStamp", timeStamp(millis()));    
       for (int i=0; i<NUM_ROW; i++) {    
         for (int j=0; j<NUM_COLUMN; j++) {
-          data[i][j] = byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3]); 
+          data[i][j] = byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3])-550; 
           newRow.setInt("Col"+Integer.toString(i*NUM_COLUMN+j+1), data[i][j]);
         }
       }    
       //renewal
       savedTime = millis();
     } else {
-      println("passedTime : " + passedTime);
+      //println("passedTime : " + passedTime);
       // Data re-arrangement to matrix.
       for (int i=0; i<NUM_ROW; i++) {    
-        for (int j=0; j<NUM_COLUMN; j++) {
-          //println("before byte2int : "+inBytes[(i*NUM_COLUMN+j)*2+4]+","+inBytes[(i*NUM_COLUMN+j)*2+3]);
-          data[i][j] = byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3]); //byte to int // why +4, +3 ?? cause inBytes=readBytes(); inBytes includes header (=2byte)
+        for (int j=0; j<NUM_COLUMN; j++) {        
+          data[i][j] = byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3])-550; //byte to int // why +4, +3 ?? cause inBytes=readBytes(); inBytes includes header (=2byte)
           //output.print(data[i][j]+" "+"\t");//output.print(" "+"\t"); //int test
         }
       }
@@ -183,15 +183,15 @@ void serialEvent(Serial myPort) {
 
 public void SAVE() {
   println("data saved");
-    getDate();
-    saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
-    delay(1000);
-    table.clearRows();
-    //myPort.clear();
+  getDate();
+  saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
+  delay(1000);
+  table.clearRows();
+  //myPort.clear();
 }
 public void RESET() {
   println("data reset");
-    table.clearRows();
+  table.clearRows();
 }
 
 // Set escape event for terminate program.
@@ -208,10 +208,13 @@ void keyPressed() {
 
 // Read transfered 2-byte based 12bit ADC data.
 int byte2int(byte msb, byte lsb) { 
-  //print("msb : "+msb+" lsb : "+lsb);
+  //print("msb : "+msb+" lsb : "+lsb); //msb : Most significant Bit, lsb : Least Significant Bit
   int i = 0;
-  i = msb << 8; // msb << 8 == 00000000 00000000 00000000 xxxxxxxx 00000000  
-  i |= lsb & 0xFF; //bit or calculating, then assignment 0xFF = 255 = 11111111 ?print test
+  i = msb << 8; // msb << 8 == xxxxxxxx 00000000, means plus 8bit on right side
+  // int i = msb << 8 means 00000000 00000000 xxxxxxxx 00000000 
+  i |= lsb & 0xFF; //bit or calculating, then assignment 0xFF = 255 = 11111111, |= means if 0 or 1, then should be 1 
+  // lsb & 0xFF means masking. xxxxxxxx & 11111111 = xxxxxxxx 
+  //if short type, or types having at least more than 2 bytes, & 0xFF is effective. so that's useless code  
   //print("i :"+i);
   //println();
   return i;
