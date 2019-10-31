@@ -12,6 +12,7 @@
 import processing.serial.*;
 import java.util.Date;
 import controlP5.*;
+import static javax.swing.JOptionPane.*;
 //import java.awt.Robot;
 
 
@@ -133,15 +134,17 @@ void draw() {
   //Draw rectangular for sensor indication.
   for (int i=0; i<NUM_ROW; i++) {
     for (int j=0; j<NUM_COLUMN; j++) {
-      //println("data["+j+"]["+i+"]/16"+"="+data[j][i]/16);
       
       //fill(255, 255-data[j][i]/16, 255-data[j][i]/16);
       
-      fill(data[j][i]/2, 0, 0);
+      fill(data[j][i]*14, 0, 0);
       rect(20+i*25, 70+j*25, 20, 20, 7);
     }
   }
 }
+
+int minusConst =38; 
+
 // Receive data from Arduino and analyze it according to data form.
 void serialEvent(Serial myPort) {
   // Trim single data packet
@@ -159,7 +162,10 @@ void serialEvent(Serial myPort) {
       newRow.setString("TimeStamp", timeStamp(millis()));    
       for (int i=0; i<NUM_ROW; i++) {    
         for (int j=0; j<NUM_COLUMN; j++) {
-          data[i][j] = byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3])-550; 
+          data[i][j] = remap(byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3]))-minusConst;
+          //converting minus datas to 0
+          if(data[i][j]<0){ data[i][j] = 0; }
+          //making new row data
           newRow.setInt("Col"+Integer.toString(i*NUM_COLUMN+j+1), data[i][j]);
         }
       }    
@@ -170,8 +176,10 @@ void serialEvent(Serial myPort) {
       // Data re-arrangement to matrix.
       for (int i=0; i<NUM_ROW; i++) {    
         for (int j=0; j<NUM_COLUMN; j++) {        
-          data[i][j] = byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3])-550; //byte to int // why +4, +3 ?? cause inBytes=readBytes(); inBytes includes header (=2byte)
+          data[i][j] = remap(byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3]))-minusConst; 
+          //byte to int // why +4, +3 ?? cause inBytes=readBytes(); inBytes includes header (=2byte)
           //output.print(data[i][j]+" "+"\t");//output.print(" "+"\t"); //int test
+          
         }
       }
     }
@@ -185,7 +193,8 @@ public void SAVE() {
   println("data saved");
   getDate();
   saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
-  delay(1000);
+  showMessageDialog(null, "저장되었습니다", "확인", INFORMATION_MESSAGE);
+  //delay(1000);
   table.clearRows();
   //myPort.clear();
 }
@@ -237,4 +246,10 @@ String timeStamp(int MS) {
   int hours = ((MS/(1000*60*60)) % 24);                      
 
   return hours+": " +minutes+ ": "+ seconds;
+}
+
+int remap(int val)
+{
+  float v = map(val,0,2000,0,100);
+  return (int)v;
 }
