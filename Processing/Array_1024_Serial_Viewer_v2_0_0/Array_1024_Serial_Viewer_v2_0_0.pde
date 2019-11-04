@@ -1,9 +1,5 @@
 /**************************************************************************
  * Update Note
- *  FootViewer ver1.0.0 (2019.09.09)
- *    - Read data through serial comm (ble or serial)
- *    - Read multiple sensor data based on Column * Row
- *
  *  Array_1024_Serial_Viewer ver1.0.1 (2019.10.06)
  *    - Stabilize serial data transfer packet
  *    - Program pair with Arduino\1024_Array_Serial\1024_Array_Serial.ino
@@ -17,8 +13,7 @@ import static javax.swing.JOptionPane.*;
 
 ControlP5 cp5;
 PFont font;
-
-String progVer = "Rev 1.0.1";
+String progVer = "Rev 2.0.0";
 
 // Matirx array constant.
 int NUM_COLUMN = 32;
@@ -131,7 +126,6 @@ void draw() {
   //Draw rectangular for sensor indication.
   for (int i=0; i<NUM_ROW; i++) {
     for (int j=0; j<NUM_COLUMN; j++) {
-      //fill(255, 255-data[j][i]/16, 255-data[j][i]/16);
       fill(data[j][i]*14, 0, 0);
       rect(20+i*25, 70+j*25, 21, 21, 7);
     }
@@ -187,15 +181,16 @@ void serialEvent(Serial myPort) {
   }
 }
 
+//SAVE button click event
 public void SAVE() {
   println("data saved");
   getDate();
   saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
   showMessageDialog(null, "저장되었습니다", "메시지", INFORMATION_MESSAGE);
-  //delay(1000);
   table.clearRows();
-  //myPort.clear();
 }
+
+//RESET button click event
 public void RESET() {
   println("data reset");
   showMessageDialog(null, "데이터 로우를 초기화합니다", "메시지", INFORMATION_MESSAGE);
@@ -236,8 +231,8 @@ void getDate() {
   h = hour();    // Values from 0 - 23
 }
 
+//first column in csv file.
 String timeStamp(int MS) {
-  //int totalSec= (MS / 1000);
   float seconds = float(nfs((MS % 60000)/1000f, 2, 2));
   int minutes = (MS / (1000*60)) % 60;
   int hours = ((MS/(1000*60*60)) % 24);                      
@@ -245,6 +240,7 @@ String timeStamp(int MS) {
   return hours+": " +minutes+ ": "+ seconds;
 }
 
+//converting data's range from 0 to 100.
 int remap(int val)
 {
   float v = map(val, 0, 2000, 0, 100);
