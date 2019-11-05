@@ -9,22 +9,25 @@ import processing.serial.*;
 import java.util.Date;
 import controlP5.*;
 import static javax.swing.JOptionPane.*;
+import processing.core.*;
 
 
 ControlP5 cp5;
 PFont font;
-String progVer = "Rev 2.0.0";
+//String progVer = "Rev 2.0.0";
 
 // Matirx array constant.
 int NUM_COLUMN = 32;
-int NUM_ROW = 32;
+int NUM_ROW = 64;
 int NUM_SENSOR = NUM_COLUMN * NUM_ROW;
+int one_recSize_space = 14;
+float one_recSize = 11.5;
 
 // Set-up overall Serial comm
 Serial  myPort;   // Define serial comm
 int lf = 0xEAEA;      // ASCII linefeed (only Single byte works)
-byte[] inBytes = new byte[NUM_SENSOR*2 + 4]; //32*32*2 +4 , why *2? reason : In my thought, before arduino, unit16_t (2byte) => (byte*) 
-int[][] data = new int[NUM_COLUMN][NUM_ROW];
+byte[] inBytes = new byte[NUM_SENSOR*2 + 4]; //32*32*2 +4 , why *2? In my thought, before arduino, unit16_t (2byte) => (byte*) 
+int[][] data = new int[NUM_ROW][NUM_COLUMN]; //64x32
 
 // Set-up text file recording.
 //PrintWriter output;
@@ -39,7 +42,7 @@ int passedTime;
 
 void settings() {
   // Set size of window : size(width, Height)
-  size(40 + 25 * NUM_COLUMN, 100 + 25 * NUM_ROW);
+  size(40 + one_recSize_space * NUM_COLUMN, 80 + one_recSize_space * NUM_ROW);
 }
 
 // Variables for current date & time.
@@ -51,14 +54,14 @@ int mn;  // Values from 0 - 59
 int h;    // Values from 0 - 23
 
 //button
-int sBtnX = 340;
+int sBtnX = 180;
 int sBtnY = 25;
 int sBtnWidth = 60;
 int sBtnHeight = 30;
 
 String portName;
 
-void setup() { 
+void setup() {
 
   // Set frame rate.
   frameRate(100);
@@ -74,26 +77,24 @@ void setup() {
   //save current time
   savedTime = millis();
 
-  cp5 = new ControlP5(this);
-
   // create a new button 
+  cp5 = new ControlP5(this);
   Button saveBtn= cp5.addButton("SAVE")
     .setPosition(sBtnX, sBtnY)
     .setSize(sBtnWidth, sBtnHeight)
     ;
   //saveBtn.setColorBackground(color(#ffffff));
   //saveBtn.setColorActive(); when mouse-over
-  saveBtn.getCaptionLabel().setFont(font).setSize(14);
-
+  saveBtn.getCaptionLabel().setFont(font).setSize(13);
 
   Button resetBtn= cp5.addButton("RESET")
     .setPosition(sBtnX+sBtnWidth+10, sBtnY)
     .setSize(sBtnWidth, sBtnHeight);
-  resetBtn.getCaptionLabel().setFont(font).setSize(14);
+  resetBtn.getCaptionLabel().setFont(font).setSize(13);
 
   // Select serial port.
   println(Serial.list());  // Show up all possible serial ports.
-  delay(2000);
+  //delay(2000);
   portName = Serial.list()[1];  // Set specific serial port to comm.
   println("portName : "+portName);
   myPort = new Serial(this, portName, 115200);
@@ -102,55 +103,49 @@ void setup() {
   // Sets a specific byte to buffer until before calling serialEvent().
 }
 
-
 void draw() {
-
   // Set background color as gray.
   background(100);
 
   // Set font size and color.
   textFont(font, 10);
   fill(255);
-  text(progVer, width-70, height-15);
+  //text(progVer, width-70, height-15);
   text("FPS :"+int(frameRate), 20, 60);
   text("Connected port: " + portName, 20, 40);
 
-
   // Set font size and color.
-  textFont(font, 18);
+  textFont(font, 11);
   fill(255);
   getDate();
-  text(str(y)+"."+str(m)+"."+str(d)+". "+str(h)+":"+str(mn)+":"+str(s), width-200, 40);
-
+  text(str(y)+"."+str(m)+"."+str(d)+". "+str(h)+":"+str(mn)+":"+str(s), width-120, 40);
 
   //Draw rectangular for sensor indication.
   for (int i=0; i<NUM_ROW; i++) {
     for (int j=0; j<NUM_COLUMN; j++) {
-      fill(data[j][i]*14, 0, 0);
-      rect(20+i*25, 70+j*25, 21, 21, 7);
+      fill(data[i][j]*14, 0, 0);
+      rect(20+j*one_recSize_space, 70+i*one_recSize_space, one_recSize, one_recSize, 3);
     }
   }
 }
 
-int minusConst = 38;
+int minusConst = 50;
 int loadingTime = 3400;
 
 // Receive data from Arduino and analyze it according to data form.
 void serialEvent(Serial myPort) {
   // Trim single data packet
-  if (myPort.available() > ((NUM_SENSOR+1) * 2)) { //available :   Returns the number of bytes available.
+  if (myPort.available() > ((NUM_SENSOR+1) * 2)) { //available :   Returns the number of bytes available. //<>//
     inBytes = myPort.readBytes(); //Reads a group of bytes from the buffer or null if there are none available. received Byte inBytes[2052]
     myPort.clear();
   }
-
   try {
     passedTime = millis() - savedTime;
     //making new row data after loadingTime, and per totalTimes. 
     if (millis()>loadingTime && passedTime > totalTime) {
-
       TableRow newRow = table.addRow();
       newRow.setString("TimeStamp", timeStamp(millis()));    
-      for (int i=0; i<NUM_ROW; i++) {    
+      for (int i=0; i<NUM_ROW; i++) {
         for (int j=0; j<NUM_COLUMN; j++) {
           data[i][j] = remap(byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3]))-minusConst;
 
@@ -171,7 +166,6 @@ void serialEvent(Serial myPort) {
         for (int j=0; j<NUM_COLUMN; j++) {        
           data[i][j] = remap(byte2int(inBytes[(i*NUM_COLUMN+j)*2+4], inBytes[(i*NUM_COLUMN+j)*2+3]))-minusConst; 
           //byte to int // why +4, +3 ?? cause inBytes=readBytes(); inBytes includes header (=2byte)
-          //output.print(data[i][j]+" "+"\t");//output.print(" "+"\t"); //int test
         }
       }
     }
