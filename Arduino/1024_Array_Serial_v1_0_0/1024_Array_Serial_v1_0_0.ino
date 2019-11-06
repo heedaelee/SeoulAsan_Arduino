@@ -3,6 +3,7 @@
 #define NUM_SENSOR NUM_ROW*NUM_COLUMN // 32 * 32 = 1024
 #define SERIAL_BUFFER_SIZE 2*NUM_SENSOR //mean : buffer 1024 * 2
 #define S1 analogRead(A4) //mcu의 입력은 여기로만 받는듯... analogRead 하나임 분해능 2^12 설정. 즉 4096까지 가능, 원래 아두이노는 10bit 아날로그 값 가짐. 즉 2^10= 1024값 표현 가능
+//핀번호 32
 
 int header = 0xA8A8;//43176
 int footer = 0xEAEA;//60138
@@ -57,11 +58,11 @@ void loop() {
       pD = &data[i * NUM_COLUMN + j + 1]; *pD = (int16_t)S1; //maximum value : 4096 즉 2의 12승까지
     }
   }
-//  Serial.println((String)"data["+0+(String)"]"+data[0]);
-//  Serial.println((String)"data["+1+(String)"]"+data[1]);
-//  Serial.println((String)"data["+2+(String)"]"+data[2]);
-//  Serial.println((String)"data["+3+(String)"]"+data[3]);
-    Serial.write((byte*)data, sizeof(data)); 
+  Serial.println((String)"data["+0+(String)"]"+data[0]);
+  Serial.println((String)"data["+1+(String)"]"+data[1]);
+  Serial.println((String)"data["+2+(String)"]"+data[2]);
+  Serial.println((String)"data["+3+(String)"]"+data[3]);
+//    Serial.write((byte*)data, sizeof(data)); 
   //Writes binary data to the serial port. Serial.write(buf, len)
   //sizeof() => total byte. so, int16_t data [1024+2] ==>1026*2, differ from int16_t=2byte
   //  Serial.println(sizeof(data)); (1024+2)*2 = 2052

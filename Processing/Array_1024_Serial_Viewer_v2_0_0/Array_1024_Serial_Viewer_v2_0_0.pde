@@ -9,7 +9,6 @@ import processing.serial.*;
 import java.util.Date;
 import controlP5.*;
 import static javax.swing.JOptionPane.*;
-import processing.core.*;
 
 
 ControlP5 cp5;
@@ -68,10 +67,17 @@ void setup() {
 
   font = createFont("Arial Bold", 48);
 
+  //Create csv first row's column
   table = new Table();
   table.addColumn("TimeStamp");
-  for (int i=1; i<=NUM_SENSOR; i++ ) {
-    table.addColumn("Col"+i);
+  //for (int i=1; i<=NUM_SENSOR; i++ ) {
+  //  table.addColumn("Col"+i);
+  //}
+  for(int i=0; i<NUM_ROW; i++){
+    for (int j=0; j<NUM_COLUMN; j++){
+      String columnName = "(" + i + "," + j + ")";
+      table.addColumn(columnName);
+    }
   }
 
   //save current time
@@ -135,7 +141,7 @@ int loadingTime = 3400;
 // Receive data from Arduino and analyze it according to data form.
 void serialEvent(Serial myPort) {
   // Trim single data packet
-  if (myPort.available() > ((NUM_SENSOR+1) * 2)) { //available :   Returns the number of bytes available. //<>//
+  if (myPort.available() > ((NUM_SENSOR+1) * 2)) { //available :   Returns the number of bytes available.
     inBytes = myPort.readBytes(); //Reads a group of bytes from the buffer or null if there are none available. received Byte inBytes[2052]
     myPort.clear();
   }
@@ -154,7 +160,9 @@ void serialEvent(Serial myPort) {
             data[i][j] = 0;
           }
           //insert data
-          newRow.setInt("Col"+Integer.toString(i*NUM_COLUMN+j+1), data[i][j]);
+          //newRow.setInt("Col"+Integer.toString(i*NUM_COLUMN+j+1), data[i][j]);
+          String columnName = "(" + i + "," + j + ")";
+          newRow.setInt(columnName, data[i][j]);
         }
       }    
       //renewal
@@ -204,11 +212,11 @@ void keyPressed() {
 }
 
 // Read transfered 2-byte based 12bit ADC data.
-int byte2int(byte msb, byte lsb) { 
+int byte2int(byte msb, byte lsb) { //[4],[3] 
   //print("msb : "+msb+" lsb : "+lsb); //msb : Most significant Bit, lsb : Least Significant Bit
   int i = 0;
-  i = msb << 8; // msb << 8 == xxxxxxxx 00000000, means plus 8bit on right side
-  // int i = msb << 8 means 00000000 00000000 xxxxxxxx 00000000 
+  i = msb << 8; // msb << 8 ==  00000000, move left up to 8 bit, so just 00000000 can be plused. 
+  // int i = msb << 8 means 00000000 00000000 00000000 00000000 
   i |= lsb & 0xFF; //bit or calculating, then assignment 0xFF = 255 = 11111111, |= means if 0 or 1, then should be 1 
   // lsb & 0xFF means masking. xxxxxxxx & 11111111 = xxxxxxxx 
   //if short type, or types having at least more than 2 bytes, & 0xFF is effective. so that's useless code  
@@ -230,13 +238,11 @@ String timeStamp(int MS) {
   float seconds = float(nfs((MS % 60000)/1000f, 2, 2));
   int minutes = (MS / (1000*60)) % 60;
   int hours = ((MS/(1000*60*60)) % 24);                      
-
   return hours+": " +minutes+ ": "+ seconds;
 }
 
 //converting data's range from 0 to 100.
-int remap(int val)
-{
+int remap(int val){
   float v = map(val, 0, 2000, 0, 100);
   return (int)v;
 }
