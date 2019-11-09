@@ -101,7 +101,7 @@ void setup() {
   // Select serial port.
   println(Serial.list());  // Show up all possible serial ports.
   //delay(2000);
-  portName = Serial.list()[1];  // Set specific serial port to comm.
+  portName = Serial.list()[0];  // Set specific serial port to comm.
   println("portName : "+portName);
   myPort = new Serial(this, portName, 115200);
   myPort.clear();
