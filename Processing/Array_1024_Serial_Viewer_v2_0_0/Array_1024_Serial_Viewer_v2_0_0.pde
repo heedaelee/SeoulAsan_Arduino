@@ -59,9 +59,11 @@ int sBtnWidth = 60;
 int sBtnHeight = 30;
 
 String portName;
+String COMlist [] = new String[Serial.list().length];
+
+final boolean debug = true;
 
 void setup() {
-
   // Set frame rate.
   frameRate(100);
 
@@ -73,16 +75,14 @@ void setup() {
   //for (int i=1; i<=NUM_SENSOR; i++ ) {
   //  table.addColumn("Col"+i);
   //}
-  for(int i=0; i<NUM_ROW; i++){
-    for (int j=0; j<NUM_COLUMN; j++){
+  for (int i=0; i<NUM_ROW; i++) {
+    for (int j=0; j<NUM_COLUMN; j++) {
       String columnName = "(" + i + "," + j + ")";
       table.addColumn(columnName);
     }
   }
-
   //save current time
   savedTime = millis();
-
   // create a new button 
   cp5 = new ControlP5(this);
   Button saveBtn= cp5.addButton("SAVE")
@@ -99,14 +99,37 @@ void setup() {
   resetBtn.getCaptionLabel().setFont(font).setSize(13);
 
   // Select serial port.
-  println(Serial.list());  // Show up all possible serial ports.
-  //delay(2000);
-  portName = Serial.list()[1];  // Set specific serial port to comm.
-  println("portName : "+portName);
-  myPort = new Serial(this, portName, 115200);
-  myPort.clear();
-  myPort.bufferUntil(lf); //lf = footer (dec ->60138), read untill footer set in arduino before..
-  // Sets a specific byte to buffer until before calling serialEvent().
+  try {
+    if (debug) printArray(Serial.list());// Show up all possible serial ports.
+    int i = Serial.list().length;
+    if (i != 0) {
+      // need to check which port the inst uses , for now we'll just let the user decide
+      for (int j = 0; j < i; j++ ) {
+        COMlist[j] = Serial.list()[j];
+        println(COMlist[j]);
+      }
+
+      portName = (String)showInputDialog(null, "포트를 선택해 주세요.", "메시지", INFORMATION_MESSAGE, null, COMlist, COMlist[0]);
+      println("portName : "+portName);
+      if (portName == null) exit();
+      if (portName.isEmpty()) exit();
+
+      if (debug) println(portName);
+      myPort = new Serial(this, portName, 115200); // change baud rate to your liking
+      myPort.clear();
+      myPort.bufferUntil(lf); //lf = footer (dec ->60138), read untill footer set in arduino before..
+      // Sets a specific byte to buffer until before calling serialEvent().
+    } else {
+      showMessageDialog(frame, "PC에 연결된 포트가 없습니다");
+      exit();
+    }
+  }
+  catch (Exception e)
+  { //Print the type of error 
+    showMessageDialog(frame, "COM port 를 사용할 수 없습니다. \n (maybe in use by another program)");
+    println("Error:", e);
+    exit();
+  }
 }
 
 void draw() {
@@ -136,7 +159,7 @@ void draw() {
 }
 
 int minusConst = 50;
-int loadingTime = 3400;
+int loadingTime = 3600;
 
 // Receive data from Arduino and analyze it according to data form.
 void serialEvent(Serial myPort) {
@@ -187,8 +210,9 @@ void serialEvent(Serial myPort) {
 public void SAVE() {
   println("data saved");
   getDate();
-  saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
-  showMessageDialog(null, "저장되었습니다", "메시지", INFORMATION_MESSAGE);
+  saveTable(table, "data/"+str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
+  String dataPath = dataPath(""); 
+  showMessageDialog(null, "저장되었습니다"+"\n 저장경로: "+dataPath, "메시지", INFORMATION_MESSAGE);
   table.clearRows();
 }
 
@@ -212,13 +236,13 @@ void keyPressed() {
 }
 
 // Read transfered 2-byte based 12bit ADC data.
-int byte2int(byte msb, byte lsb) { //[4],[3] 
+int byte2int(byte msb, byte lsb) { //[4],[3] because c++ have Little endian, byte is reversed. in arduino, (byte*)data
   //print("msb : "+msb+" lsb : "+lsb); //msb : Most significant Bit, lsb : Least Significant Bit
-  int i = 0;
-  i = msb << 8; // msb << 8 ==  00000000, move left up to 8 bit, so just 00000000 can be plused. 
+  int i = 0; //so below, bytes restore way. to the original.
+  i = msb << 8; // msb << 8 == xxxxxxxx 00000000, move left up to 8 bit 
   // int i = msb << 8 means 00000000 00000000 00000000 00000000 
   i |= lsb & 0xFF; //bit or calculating, then assignment 0xFF = 255 = 11111111, |= means if 0 or 1, then should be 1 
-  // lsb & 0xFF means masking. xxxxxxxx & 11111111 = xxxxxxxx 
+  // lsb & 0xFF means masking. 0xFF is int type. so lsb can be int,  00000000 00000000 000000000 xxxxxxxx & 00000000 00000000 00000000 11111111 = 00000000 00000000 00000000 xxxxxxxx so, minus disappear because masking using int.
   //if short type, or types having at least more than 2 bytes, & 0xFF is effective. so that's useless code  
   return i;
 }
@@ -242,7 +266,7 @@ String timeStamp(int MS) {
 }
 
 //converting data's range from 0 to 100.
-int remap(int val){
+int remap(int val) {
   float v = map(val, 0, 2000, 0, 100);
   return (int)v;
 }
