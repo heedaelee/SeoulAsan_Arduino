@@ -17,7 +17,7 @@ PFont font;
 
 // Matirx array constant.
 int NUM_COLUMN = 32;
-int NUM_ROW = 64;
+int NUM_ROW = 32;
 int NUM_SENSOR = NUM_COLUMN * NUM_ROW;
 int one_recSize_space = 14;
 float one_recSize = 11.5;
@@ -25,7 +25,7 @@ float one_recSize = 11.5;
 // Set-up overall Serial comm
 Serial  myPort;   // Define serial comm
 int lf = 0xEAEA;      // ASCII linefeed (only Single byte works)
-byte[] inBytes = new byte[NUM_SENSOR*2 + 4]; //32*32*2 +4 , why *2? In my thought, before arduino, unit16_t (2byte) => (byte*) 
+byte[] inBytes = new byte[NUM_SENSOR*2 + 4]; //64*32*2 +4 , why *2? In my thought, before arduino, unit16_t (2byte) => (byte*) 
 int[][] data = new int[NUM_ROW][NUM_COLUMN]; //64x32
 
 // Set-up text file recording.
@@ -35,7 +35,7 @@ Table table;
 //Set-up interval saving time
 int startedTime;
 int savedTime;
-int totalTime = 500; //1s = 1000
+int minInterval = 500; //1s = 1000
 int passedTime;
 
 
@@ -59,9 +59,11 @@ int sBtnWidth = 60;
 int sBtnHeight = 30;
 
 String portName;
+String COMlist [] = new String[Serial.list().length];
+
+final boolean debug = true;
 
 void setup() {
-
   // Set frame rate.
   frameRate(100);
 
@@ -73,43 +75,80 @@ void setup() {
   //for (int i=1; i<=NUM_SENSOR; i++ ) {
   //  table.addColumn("Col"+i);
   //}
-  for(int i=0; i<NUM_ROW; i++){
-    for (int j=0; j<NUM_COLUMN; j++){
+  for (int i=0; i<NUM_ROW; i++) {
+    for (int j=0; j<NUM_COLUMN; j++) {
       String columnName = "(" + i + "," + j + ")";
       table.addColumn(columnName);
     }
   }
-
   //save current time
   savedTime = millis();
 
   // create a new button 
   cp5 = new ControlP5(this);
+
+  // draw save button
   Button saveBtn= cp5.addButton("SAVE")
     .setPosition(sBtnX, sBtnY)
-    .setSize(sBtnWidth, sBtnHeight)
-    ;
+    .setSize(sBtnWidth, sBtnHeight);
   //saveBtn.setColorBackground(color(#ffffff));
   //saveBtn.setColorActive(); when mouse-over
   saveBtn.getCaptionLabel().setFont(font).setSize(13);
 
+  // draw reset button
   Button resetBtn= cp5.addButton("RESET")
     .setPosition(sBtnX+sBtnWidth+10, sBtnY)
     .setSize(sBtnWidth, sBtnHeight);
   resetBtn.getCaptionLabel().setFont(font).setSize(13);
 
+  // draw minInterval slider button
+  Slider s = cp5.addSlider("minInterval").setCaptionLabel("Min_Interval")
+    .setRange(100, 1000)
+    .setPosition(width-120, 30)
+    .setSize(40, 15);
+    
+  // draw Sensitivity slider button  
+  Slider s2 = cp5.addSlider("minusConst").setCaptionLabel("Sensitivity")
+    .setRange(10, 200)
+    .setPosition(width-120, 50)
+    .setSize(40, 15);
+
   // Select serial port.
-  println(Serial.list());  // Show up all possible serial ports.
-  //delay(2000);
-  portName = Serial.list()[0];  // Set specific serial port to comm.
-  println("portName : "+portName);
-  myPort = new Serial(this, portName, 115200);
-  myPort.clear();
-  myPort.bufferUntil(lf); //lf = footer (dec ->60138), read untill footer set in arduino before..
-  // Sets a specific byte to buffer until before calling serialEvent().
+  try {
+    if (debug) printArray(Serial.list());// Show up all possible serial ports.
+    int i = Serial.list().length;
+    if (i != 0) {
+      // need to check which port the inst uses , for now we'll just let the user decide
+      for (int j = 0; j < i; j++ ) {
+        COMlist[j] = Serial.list()[j];
+        println(COMlist[j]);
+      }
+
+      portName = (String)showInputDialog(null, "포트를 선택해 주세요.", "메시지", INFORMATION_MESSAGE, null, COMlist, COMlist[0]);
+      println("portName : "+portName);
+      if (portName == null) exit();
+      if (portName.isEmpty()) exit();
+
+      if (debug) println(portName);
+      myPort = new Serial(this, portName, 115200); // change baud rate to your liking
+      myPort.clear();
+      myPort.bufferUntil(lf); //lf = footer (dec ->60138), read untill footer set in arduino before..
+      // Sets a specific byte to buffer until before calling serialEvent().
+    } else {
+      showMessageDialog(frame, "PC에 연결된 포트가 없습니다");
+      exit();
+    }
+  }
+  catch (Exception e)
+  { //Print the type of error 
+    showMessageDialog(frame, "COM port 를 사용할 수 없습니다. \n (maybe in use by another program)");
+    println("Error:", e);
+    exit();
+  }
 }
 
 void draw() {
+  
   // Set background color as gray.
   background(100);
 
@@ -124,19 +163,21 @@ void draw() {
   textFont(font, 11);
   fill(255);
   getDate();
-  text(str(y)+"."+str(m)+"."+str(d)+". "+str(h)+":"+str(mn)+":"+str(s), width-120, 40);
+  text(str(y)+"."+str(m)+"."+str(d)+". "+str(h)+":"+str(mn)+":"+str(s), width-120, 20);
 
   //Draw rectangular for sensor indication.
   for (int i=0; i<NUM_ROW; i++) {
     for (int j=0; j<NUM_COLUMN; j++) {
       fill(data[i][j]*14, 0, 0);
       rect(20+j*one_recSize_space, 70+i*one_recSize_space, one_recSize, one_recSize, 3);
+      if(i==32&&j==31){text("1", 33+j*one_recSize_space, 68+i*one_recSize_space);}
+      if(i==0&&j==15){text("16", 20+j*one_recSize_space, 65+i*one_recSize_space);}
     }
   }
 }
 
-int minusConst = 50;
-int loadingTime = 3400;
+int minusConst = 40;
+int loadingTime = 3600;
 
 // Receive data from Arduino and analyze it according to data form.
 void serialEvent(Serial myPort) {
@@ -147,8 +188,8 @@ void serialEvent(Serial myPort) {
   }
   try {
     passedTime = millis() - savedTime;
-    //making new row data after loadingTime, and per totalTimes. 
-    if (millis()>loadingTime && passedTime > totalTime) {
+    //making new row data after loadingTime, and per minIntervals. 
+    if (millis()>loadingTime && passedTime > minInterval) {
       TableRow newRow = table.addRow();
       newRow.setString("TimeStamp", timeStamp(millis()));    
       for (int i=0; i<NUM_ROW; i++) {
@@ -187,8 +228,9 @@ void serialEvent(Serial myPort) {
 public void SAVE() {
   println("data saved");
   getDate();
-  saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
-  showMessageDialog(null, "저장되었습니다", "메시지", INFORMATION_MESSAGE);
+  saveTable(table, "data/"+str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
+  String dataPath = dataPath(""); 
+  showMessageDialog(null, "저장되었습니다"+"\n 저장경로: "+dataPath, "메시지", INFORMATION_MESSAGE);
   table.clearRows();
 }
 
@@ -212,13 +254,13 @@ void keyPressed() {
 }
 
 // Read transfered 2-byte based 12bit ADC data.
-int byte2int(byte msb, byte lsb) { //[4],[3] 
+int byte2int(byte msb, byte lsb) { //[4],[3] because c++ have Little endian, byte is reversed. in arduino, (byte*)data
   //print("msb : "+msb+" lsb : "+lsb); //msb : Most significant Bit, lsb : Least Significant Bit
-  int i = 0;
-  i = msb << 8; // msb << 8 ==  00000000, move left up to 8 bit, so just 00000000 can be plused. 
+  int i = 0; //so below, bytes restore way. to the original.
+  i = msb << 8; // msb << 8 == xxxxxxxx 00000000, move left up to 8 bit 
   // int i = msb << 8 means 00000000 00000000 00000000 00000000 
   i |= lsb & 0xFF; //bit or calculating, then assignment 0xFF = 255 = 11111111, |= means if 0 or 1, then should be 1 
-  // lsb & 0xFF means masking. xxxxxxxx & 11111111 = xxxxxxxx 
+  // lsb & 0xFF means masking. 0xFF is int type. so lsb can be int,  00000000 00000000 000000000 xxxxxxxx & 00000000 00000000 00000000 11111111 = 00000000 00000000 00000000 xxxxxxxx so, minus disappear because masking using int.
   //if short type, or types having at least more than 2 bytes, & 0xFF is effective. so that's useless code  
   return i;
 }
@@ -242,7 +284,7 @@ String timeStamp(int MS) {
 }
 
 //converting data's range from 0 to 100.
-int remap(int val){
+int remap(int val) {
   float v = map(val, 0, 2000, 0, 100);
   return (int)v;
 }
