@@ -38,7 +38,6 @@ int savedTime;
 int minInterval = 500; //1s = 1000
 int passedTime;
 
-
 void settings() {
   // Set size of window : size(width, Height)
   size(40 + one_recSize_space * NUM_COLUMN, 80 + one_recSize_space * NUM_ROW);
@@ -247,7 +246,7 @@ void keyPressed() {
     //output.flush(); // Writes the remaining data to the file
     //output.close(); // Finishes the file
     getDate();
-    saveTable(table, str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
+    saveTable(table, "data/"+str(y)+"_"+str(m)+"_"+str(d)+"_"+str(h)+"_"+str(mn)+"_"+str(s)+".csv");
     //myPort.dispose();
     exit(); // Stops the program
   }
